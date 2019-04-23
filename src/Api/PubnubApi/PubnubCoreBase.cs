@@ -964,6 +964,7 @@ namespace PubnubApi
                     jsonString = jsonResponse.Result;
                 }
 #else
+                ThreadPool.GetAvailableThreads(out var t, out var t2);
                 if (pubnubRequestState.UsePostMethod)
                 {
                     Task<string> jsonResponse = pubnubHttp.SendRequestAndGetJsonResponseWithPOST(requestUri, pubnubRequestState, request, jsonPostData);
@@ -993,53 +994,58 @@ namespace PubnubApi
             }
             catch (Exception ex)
             {
-                string exceptionMessage = "";
-                Exception innerEx = null;
-                WebException webEx = null;
-
-                if (ex.InnerException != null)
+                pubnubRequestState.PubnubCallback?.OnResponse(default(T), new PNStatus
                 {
-                    if (ex is WebException)
-                    {
-                        webEx = ex as WebException;
-                        exceptionMessage = webEx.ToString();
-                    }
-                    else
-                    {
-                        innerEx = ex.InnerException;
-                        exceptionMessage = innerEx.ToString();
-                    }
-                }
-                else
-                {
-                    innerEx = ex;
-                    exceptionMessage = innerEx.ToString();
-                }
+                    Error = true,
+                    ErrorData = new PNErrorData(ex.Message, ex),
+                });
+                //string exceptionMessage = "";
+                //Exception innerEx = null;
+                //WebException webEx = null;
 
-                if (exceptionMessage.IndexOf("The request was aborted: The request was canceled", StringComparison.CurrentCultureIgnoreCase) == -1
-                && exceptionMessage.IndexOf("Machine suspend mode enabled. No request will be processed.", StringComparison.CurrentCultureIgnoreCase) == -1
-                && (pubnubRequestState.ResponseType == PNOperationType.PNSubscribeOperation && exceptionMessage.IndexOf("The operation has timed out", StringComparison.CurrentCultureIgnoreCase) == -1)
-                && exceptionMessage.IndexOf("A task was canceled", StringComparison.CurrentCultureIgnoreCase) == -1)
-                {
-                    PNStatusCategory category = PNStatusCategoryHelper.GetPNStatusCategory(webEx == null ? innerEx : webEx);
-                    if (PubnubInstance != null && pubnubConfig.TryGetValue(PubnubInstance.InstanceId, out currentConfig))
-                    {
-                        PNStatus status = new StatusBuilder(currentConfig, jsonLib).CreateStatusResponse<T>(pubnubRequestState.ResponseType, category, pubnubRequestState, (int)HttpStatusCode.NotFound, new PNException(ex));
-                        if (pubnubRequestState != null && pubnubRequestState.PubnubCallback != null)
-                        {
-                            pubnubRequestState.PubnubCallback.OnResponse(default(T), status);
-                        }
-                        else
-                        {
-                            Announce(status);
-                        }
-                    }
+                //if (ex.InnerException != null)
+                //{
+                //    if (ex is WebException)
+                //    {
+                //        webEx = ex as WebException;
+                //        exceptionMessage = webEx.ToString();
+                //    }
+                //    else
+                //    {
+                //        innerEx = ex.InnerException;
+                //        exceptionMessage = innerEx.ToString();
+                //    }
+                //}
+                //else
+                //{
+                //    innerEx = ex;
+                //    exceptionMessage = innerEx.ToString();
+                //}
 
-                    if (PubnubInstance != null && pubnubConfig.TryGetValue(PubnubInstance.InstanceId, out currentConfig) && pubnubLog.TryGetValue(PubnubInstance.InstanceId, out currentLog))
-                    {
-                        LoggingMethod.WriteToLog(currentLog, string.Format("DateTime {0} PubnubBaseCore UrlProcessRequest Exception={1}", DateTime.Now.ToString(CultureInfo.InvariantCulture), webEx != null ? webEx.ToString() : exceptionMessage), currentConfig.LogVerbosity);
-                    }
-                }
+                //if (exceptionMessage.IndexOf("The request was aborted: The request was canceled", StringComparison.CurrentCultureIgnoreCase) == -1
+                //&& exceptionMessage.IndexOf("Machine suspend mode enabled. No request will be processed.", StringComparison.CurrentCultureIgnoreCase) == -1
+                //&& (pubnubRequestState.ResponseType == PNOperationType.PNSubscribeOperation && exceptionMessage.IndexOf("The operation has timed out", StringComparison.CurrentCultureIgnoreCase) == -1)
+                //&& exceptionMessage.IndexOf("A task was canceled", StringComparison.CurrentCultureIgnoreCase) == -1)
+                //{
+                //    PNStatusCategory category = PNStatusCategoryHelper.GetPNStatusCategory(webEx == null ? innerEx : webEx);
+                //    if (PubnubInstance != null && pubnubConfig.TryGetValue(PubnubInstance.InstanceId, out currentConfig))
+                //    {
+                //        PNStatus status = new StatusBuilder(currentConfig, jsonLib).CreateStatusResponse<T>(pubnubRequestState.ResponseType, category, pubnubRequestState, (int)HttpStatusCode.NotFound, new PNException(ex));
+                //        if (pubnubRequestState != null && pubnubRequestState.PubnubCallback != null)
+                //        {
+                //            pubnubRequestState.PubnubCallback.OnResponse(default(T), status);
+                //        }
+                //        else
+                //        {
+                //            Announce(status);
+                //        }
+                //    }
+
+                //    if (PubnubInstance != null && pubnubConfig.TryGetValue(PubnubInstance.InstanceId, out currentConfig) && pubnubLog.TryGetValue(PubnubInstance.InstanceId, out currentLog))
+                //    {
+                //        LoggingMethod.WriteToLog(currentLog, string.Format("DateTime {0} PubnubBaseCore UrlProcessRequest Exception={1}", DateTime.Now.ToString(CultureInfo.InvariantCulture), webEx != null ? webEx.ToString() : exceptionMessage), currentConfig.LogVerbosity);
+                //    }
+                //}
 
                 return "";
             }

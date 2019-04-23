@@ -84,7 +84,17 @@ namespace PubnubApi.EndPoint
             return this;
         }
 
-        public void Async(PNCallback<PNPublishResult> callback)
+        public void AsyncThread(PNCallback<PNPublishResult> callback)
+        {
+            Async(callback, false);
+        }
+
+        public void AsyncTaskFactory(PNCallback<PNPublishResult> callback)
+        {
+            Async(callback, true);
+        }
+
+        public void Async(PNCallback<PNPublishResult> callback, bool taskFactory = true)
         {
             if (this.msg == null)
             {
@@ -101,22 +111,25 @@ namespace PubnubApi.EndPoint
                 throw new ArgumentException("Missing userCallback");
             }
 
-#if NETFX_CORE || WINDOWS_UWP || UAP || NETSTANDARD
-            Task.Factory.StartNew(() =>
+            if (taskFactory)
             {
-                syncRequest = false;
-                this.savedCallback = callback;
-                Publish(this.channelName, this.msg, this.storeInHistory, this.ttl, this.userMetadata, this.queryParam, callback);
-            }, CancellationToken.None, TaskCreationOptions.PreferFairness, TaskScheduler.Default).ConfigureAwait(false);
-#else
-            new Thread(() =>
+                Task.Factory.StartNew(() =>
+                {
+                    syncRequest = false;
+                    this.savedCallback = callback;
+                    Publish(this.channelName, this.msg, this.storeInHistory, this.ttl, this.userMetadata, this.queryParam, callback);
+                }, CancellationToken.None, TaskCreationOptions.PreferFairness, TaskScheduler.Default).ConfigureAwait(false);
+            }
+            else
             {
-                syncRequest = false;
-                this.savedCallback = callback;
-                Publish(this.channelName, this.msg, this.storeInHistory, this.ttl, this.userMetadata, this.queryParam, callback);
-            })
-            { IsBackground = true }.Start();
-#endif
+                new Thread(() =>
+                {
+                    syncRequest = false;
+                    this.savedCallback = callback;
+                    Publish(this.channelName, this.msg, this.storeInHistory, this.ttl, this.userMetadata, this.queryParam, callback);
+                })
+                { IsBackground = true }.Start();
+            }
         }
 
         public PNPublishResult Sync()
